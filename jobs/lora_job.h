@@ -60,7 +60,7 @@
  */
 #define LORAWAN_ADR_ON 1
 
-#define LORAWAN_OTAA 0
+#define LORAWAN_OTAA 1
 
 /**
  * Public network on/off
