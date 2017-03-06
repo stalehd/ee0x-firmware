@@ -1,19 +1,3 @@
-/*
-**   Copyright 2016 Telenor Digital AS
-**
-**  Licensed under the Apache License, Version 2.0 (the "License");
-**  you may not use this file except in compliance with the License.
-**  You may obtain a copy of the License at
-**
-**      http://www.apache.org/licenses/LICENSE-2.0
-**
-**  Unless required by applicable law or agreed to in writing, software
-**  distributed under the License is distributed on an "AS IS" BASIS,
-**  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-**  See the License for the specific language governing permissions and
-**  limitations under the License.
-*/
-
 #include <string.h>
 #include "lora_job.h"
 #include "lmic.h"
@@ -31,9 +15,10 @@ static u1_t APPSKEY[16] = LORAWAN_APPSKEY;
 static const u1_t APPEUI[8]  = LORAWAN_APP_EUI;
 
 // unique device ID (LSBF)
-static const u1_t DEVEUI[8] = LORAWAN_DEVICE_EUI;
+static const u1_t DEVEUI[8]  = LORAWAN_DEVICE_EUI;
 
 // device-specific AES key (derived from device EUI)
+// AKA "Application Key" in LoRaWAN lingo.
 static const u1_t DEVKEY[16] = LORAWAN_APP_KEY;
 
 // Note: Unused callbacks
@@ -67,66 +52,33 @@ typedef union {
     uint8_t data[MSG_DATA_LEN];
 } lora_message_t;
 
-static void write_float(uint8_t offset, float value) {
-    uint8_t* ptr = (uint8_t*)&value;
-    for (int i = 0; i < 4; i++) {
-        LMIC.frame[offset++] = *ptr++;
-    }
-}
-
 // Default: 14, max 27
 #define TXPOWER 14
 
 static int freq = 0;
+static int counter = 0;
 static void send_frame(void) {
-    gps_fix_t fix;
-    gps_get_fix(&fix);
-
+    counter++;
     // The 0xAA...0xFF separator bytes are just for show. Remove in final version
     // (the loriot output can be hard to vgrep in the console)
     uint32_t byte = 0;
-    write_float(byte, fix.timestamp);
-    byte += 4;
-
-    write_float(byte, fix.latitude);
-
-    byte += 4;
-
-    write_float(byte, fix.longitude);
-    byte += 4;
-
-    write_float(byte, fix.altitude);
-    byte += 4;
-
     // RSSI/SNR
-    LMIC.frame[byte++] = 0;
-    LMIC.frame[byte++] = LMIC.rssi;
-    LMIC.frame[byte++] = LMIC.snr;
-
-    // Battery level (millivolts)
-    uint16_t mv = 0;
-    battery_get_mv(&mv);
-    LMIC.frame[byte++] = mv >> 8;
-    LMIC.frame[byte++] = mv;
-
-    // IMU values, first three bytes with accelerometer, then three bytes
-    // with magnetometer
-    imu_data_t imu;
-    imu_get_data(&imu);
-    write_float(byte, imu.accel_x);
-    byte += 4;
-    write_float(byte, imu.accel_y);
-    byte += 4;
-    write_float(byte, imu.accel_z);
-    byte += 4;
-    write_float(byte, imu.temperature);
-    byte += 4;
-    write_float(byte, imu.mag_x);
-    byte += 4;
-    write_float(byte, imu.mag_y);
-    byte += 4;
-    write_float(byte, imu.mag_z);
-    byte += 4;
+    LMIC.frame[byte++] = 'R';
+    LMIC.frame[byte++] = 'o';
+    LMIC.frame[byte++] = 'c';
+    LMIC.frame[byte++] = 'k';
+    LMIC.frame[byte++] = ' ';
+    LMIC.frame[byte++] = 'T';
+    LMIC.frame[byte++] = 'h';
+    LMIC.frame[byte++] = 'e';
+    LMIC.frame[byte++] = ' ';
+    LMIC.frame[byte++] = 'N';
+    LMIC.frame[byte++] = 'i';
+    LMIC.frame[byte++] = 'g';
+    LMIC.frame[byte++] = 'h';
+    LMIC.frame[byte++] = 't';
+    LMIC.frame[byte++] = 0xFF;
+    LMIC.frame[byte++] = counter % 255;
 
     NRF_LOG_PRINTF("LoRa: Sending %d bytes\n", byte);
 
@@ -163,6 +115,16 @@ static void sendfunc(osjob_t* job) {
     send_frame();
 }
 
+static void dump_received_frame() {
+    //(LMIC.frame+LMIC.dataBeg, LMIC.dataLen
+    NRF_LOG("===== data frame ======== ");
+    for (int i = 0; i < LMIC.dataLen; i++) {
+        NRF_LOG_PRINTF("%02x ", LMIC.frame[LMIC.dataBeg + i]);
+    }
+    NRF_LOG_PRINTF("\n");
+    NRF_LOG("========================= ");
+}
+
 
 void onEvent (ev_t ev) {
     switch (ev) {
@@ -171,17 +133,22 @@ void onEvent (ev_t ev) {
         case EV_BEACON_MISSED:  NRF_LOG("Got event BEACON_MISSED\n"); break;
         case EV_BEACON_TRACKED: NRF_LOG("Got event BEACON_TRACKED\n"); break;
         case EV_JOINING:        NRF_LOG("Got event JOINING\n"); break;
-        case EV_JOINED:         NRF_LOG("Got event JOINED\n"); break;
+        case EV_JOINED:         NRF_LOG("Got event JOINED\n");
+            os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(SEND_RATE), sendfunc);
+        break;
         case EV_RFU1:           NRF_LOG("Got event RFU1\n"); break;
         case EV_JOIN_FAILED:    NRF_LOG("Got event JOIN_FAILED\n"); break;
         case EV_REJOIN_FAILED:  NRF_LOG("Got event REJOIN_FAILED\n"); break;
         case EV_TXCOMPLETE:
             NRF_LOG("LoRa: Got event TXCOMPLETE\n");
+            dump_received_frame();
             os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(SEND_RATE), sendfunc);
             break;
         case EV_LOST_TSYNC:     NRF_LOG("Got event LOST_TSYNC\n"); break;
         case EV_RESET:          NRF_LOG("Got event RESET\n"); break;
-        case EV_RXCOMPLETE:     NRF_LOG("Got event RXCOMPLETE\n"); break;
+        case EV_RXCOMPLETE:     NRF_LOG("Got event RXCOMPLETE\n");
+            dump_received_frame();
+            break;
         case EV_LINK_DEAD:      NRF_LOG("Got event LINK_DEAD\n"); break;
         case EV_LINK_ALIVE:     NRF_LOG("Got event LINK_ALIVE\n"); break;
         default:
@@ -200,7 +167,7 @@ static void initfunc (osjob_t* job) {
 
     NRF_LOG("LoRa drtxpow\n");
     LMIC_setDrTxpow(DR_SF7, 14);
-
+    LMIC_setLinkCheckMode(false);
     NRF_LOG_PRINTF("LoRa: Initializing LMiC with device address 0x%08x\n", LORAWAN_DEVICE_ADDRESS);
 
     #if LORAWAN_OTAA
@@ -210,12 +177,7 @@ static void initfunc (osjob_t* job) {
         NRF_LOG("LoRa: Pre-provisioned device\n");
         LMIC_setSession(LORAWAN_NET_ID, LORAWAN_DEVICE_ADDRESS, NWSKEY, APPSKEY);
     #endif
-}
-
-static char tmpformat[64];
-static char* to_float(const float num) {
-    sprintf(tmpformat, "%f", num);
-    return tmpformat;
+    NRF_LOG("LoRa: Init func completed\n");
 }
 
 #if DUMP_STATUS
@@ -246,26 +208,6 @@ static void statusfunc(osjob_t* job) {
         NRF_LOG("PING ");
     }
     NRF_LOG_PRINTF("(0x%08x)\n", LMIC.txrxFlags);
-    NRF_LOG("GPS: ");
-    gps_fix_t fix;
-    if (gps_get_fix(&fix)) {
-        NRF_LOG("[Valid] ");
-    }
-    else {
-        NRF_LOG("[Invalid] ");
-    }
-    NRF_LOG_PRINTF("Timestamp: %s ", to_float(fix.timestamp));
-    NRF_LOG_PRINTF("Lat: %s ", to_float(fix.latitude));
-    NRF_LOG_PRINTF("Lon: %s ", to_float(fix.longitude));
-    NRF_LOG_PRINTF("Alt: %s ", to_float(fix.altitude));
-
-    gps_fix_stats_t stats;
-    gps_get_fix_stat(&stats);
-    NRF_LOG_PRINTF("Time(min): %d ", stats.min_time);
-    NRF_LOG_PRINTF("Time(max): %d ", stats.max_time);
-    NRF_LOG_PRINTF("Samples: %d ", stats.samples);
-    NRF_LOG_PRINTF("Timeouts: %d ", stats.timeouts);
-    NRF_LOG("\n");
     os_setTimedCallback(job, os_getTime() + sec2osticks(STATUS_RATE), statusfunc);
 }
 #endif
@@ -277,7 +219,8 @@ void lora_job_init(void) {
     NRF_LOG("LoRa: Will print status at regular intervals\n");
     os_setTimedCallback(&statusjob, os_getTime() + sec2osticks(STATUS_RATE), statusfunc);
     #endif
-    #if !LORAWAN_OTAA 
+    // Only start sending if OTAA is off.
+    #if !LORAWAN_OTAA
     os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(SEND_RATE), sendfunc);
     #endif
 }

@@ -1,19 +1,3 @@
-/*
-**   Copyright 2016 Telenor Digital AS
-**
-**  Licensed under the Apache License, Version 2.0 (the "License");
-**  you may not use this file except in compliance with the License.
-**  You may obtain a copy of the License at
-**
-**      http://www.apache.org/licenses/LICENSE-2.0
-**
-**  Unless required by applicable law or agreed to in writing, software
-**  distributed under the License is distributed on an "AS IS" BASIS,
-**  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-**  See the License for the specific language governing permissions and
-**  limitations under the License.
-*/
-
 /**
  * HAL implementation for for nRF52.
  */
@@ -238,8 +222,9 @@ static void gpio_config(void) {
  */
 static void spi_config(void) {
     uint32_t err_code;
-    nrf_drv_spi_config_t config =
+    nrf_drv_spi_config_t config = // NRF_DRV_SPI_DEFAULT_CONFIG(0);
     {
+        //.irq_priority = APP_IRQ_PRIORITY_LOW,
         .orc          = 0xCC,
         .frequency    = NRF_DRV_SPI_FREQ_4M,
         .mode         = NRF_DRV_SPI_MODE_0,
@@ -264,6 +249,23 @@ void hal_init (void) {
     spi_config();
     NRF_LOG_PRINTF("Started LMiC HW. Time = %d\n", hal_ticks());
 }
+
+#if 0
+/**
+ * Drive the NSS pin
+ */
+void hal_pin_nss (u1_t val) {
+    switch (val) {
+        case 0:
+            nrf_drv_gpiote_out_clear(SX1276_NSS_PIN);
+            break;
+        case 1:
+            nrf_drv_gpiote_out_set(SX1276_NSS_PIN);
+            break;
+    }
+}
+
+#endif
 
 /**
  * Set and clear the RXTX pin on the SX1276 chip

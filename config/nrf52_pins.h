@@ -1,26 +1,9 @@
-/*
-**   Copyright 2016 Telenor Digital AS
-**
-**  Licensed under the Apache License, Version 2.0 (the "License");
-**  you may not use this file except in compliance with the License.
-**  You may obtain a copy of the License at
-**
-**      http://www.apache.org/licenses/LICENSE-2.0
-**
-**  Unless required by applicable law or agreed to in writing, software
-**  distributed under the License is distributed on an "AS IS" BASIS,
-**  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-**  See the License for the specific language governing permissions and
-**  limitations under the License.
-*/
-
 #ifndef NRF52_PINS_H
 #define NRF52_PINS_H
 
-//#define NRF52_DK 1
+//#define NRF52_DK
 #define EE02
 
-// TPS22994 is set up the following way
 // Channel 1: GPS main power
 // Channel 2: GPS VBackup (always on)
 // Channel 3: Accelerometer/gyro
@@ -43,8 +26,8 @@
     #define PLAT_SPI_SCK 25
 
     // sx1276 pins
-    #define SX1276_RXTX_PIN 2
-    #define SX1276_RST_PIN 3
+    #define SX1276_RXTX_PIN 21
+    #define SX1276_RST_PIN 18
     #define SX1276_NSS_PIN 22
     #define SX1276_DIO0_PIN 13
     #define SX1276_DIO1_PIN 14
@@ -53,7 +36,7 @@
     #define SX1276_DIO4_A_PIN 19
     #define SX1276_DIO4_B_PIN 20
 
-    #define SX1276_ANT_HF_CTRL 31
+    #define SX1276_ANT_HF_CTRL 27
     #define SX1276_ANT_LF_CTRL 30
 
     #define GPS_RX_PIN 29
@@ -69,9 +52,15 @@
 #endif
 // Configuration for nRF52 DK with sheild and breakout boards.
 
-// The following pinout works if you are using the nRF52 DK with a Semtech Sx1276 shield 
-// plus a GPS (G-Top Firely X1 or similar) connected to UART and a LSM9DS1 breakout from SparkFun.
 #ifdef NRF52_DK
+//SPI (chipselect pr component)
+    #define PLAT_SPI_MISO 24
+    #define PLAT_SPI_MOSI 23
+    #define PLAT_SPI_SCK 25
+
+    #define PLAT_I2C_SDA 26
+    #define PLAT_I2C_SCL 27
+
     // sx1276 pins
     #define SX1276_RXTX_PIN 30
     #define SX1276_RST_PIN 3
@@ -101,6 +90,13 @@
 
 
 #endif
+
+// TODO: Pins for the TPS22994 chip.
+
+#define POWER_CHANNEL_GPS 0
+#define POWER_CHANNEL_GPS_BACKUP 1
+#define POWER_CHANNEL_MEMS 2
+#define POWER_CHANNEL_MEMS_IO 3
 
 #endif
 

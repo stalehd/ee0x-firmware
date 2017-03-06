@@ -89,7 +89,6 @@ INC_PATHS += -I $(NRF52_SDK_ROOT)/components/drivers_nrf/twi_master/
 # Compiler flags
 #
 CFLAGS += -DDEBUG
-#CFLAGS += -DCFG_noassert
 CFLAGS += -DBOARD_PCA10040
 CFLAGS += -DNRF52
 CFLAGS += -DBSP_DEFINES_ONLY

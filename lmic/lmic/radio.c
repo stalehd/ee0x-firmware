@@ -23,7 +23,7 @@
 
 #include "board.h"
 #include "sx1276.h"
-
+#include "nrf_log.h"
 /*!
  * Syncword for lora networks
  */
@@ -159,10 +159,10 @@ void OnRxError( void )
 static u1_t randbuf[16];
 
 #ifdef EE02
-//#define EE02_EXT_ANT 1
-#define EE02_INT_ANT 1
-const uint32_t ext_ant_pin = SX1276_ANT_HF_CTRL;
-const uint32_t int_ant_pin = SX1276_ANT_LF_CTRL;
+#define EE02_EXT_ANT 1
+//#define EE02_CHIP_ANT 1
+const Gpio_t ext_ant_pin = SX1276_ANT_HF_CTRL;
+const Gpio_t int_ant_pin = SX1276_ANT_LF_CTRL;
 #endif
 
 // get random seed from wideband noise rssi
@@ -172,10 +172,12 @@ void radio_init( void )
 
     // Set antenna
     #ifdef EE02_EXT_ANT
+    NRF_LOG("**** Using external antenna\n");
     GpioWrite(&ext_ant_pin, 1);
     GpioWrite(&int_ant_pin, 1);
     #endif
     #ifdef EE02_CHIP_ANT
+    NRF_LOG("**** Using chip antenna\n");
     GpioWrite(&ext_ant_pin, 0);
     GpioWrite(&int_ant_pin, 0);
     #endif
@@ -253,6 +255,7 @@ void os_radio( u1_t mode )
         // transmit frame now
         //LMIC_ASSERT( Radio.GetState( ) == IDLE );
 
+        NRF_LOG_PRINTF("RADIO: Sending on %d Hz\n", LMIC.freq);
         SX1276SetChannel( LMIC.freq );
         if( getSf( LMIC.rps ) == FSK )
         { // FSK modem
@@ -260,7 +263,6 @@ void os_radio( u1_t mode )
         }
         else
         { // LoRa modem
-
             SX1276SetTxConfig( MODEM_LORA, LMIC.txpow, 0, getBw( LMIC.rps ), getSf( LMIC.rps ) + 6, getCr( LMIC.rps ) + 1, 8, getIh( LMIC.rps ) ? true : false, ( getNocrc( LMIC.rps ) == 0 ) ? true : false, 0, 0, false, 3e6 );
         }
 
@@ -273,6 +275,7 @@ void os_radio( u1_t mode )
         //LMIC_ASSERT( Radio.GetState( ) == IDLE );
 
         SX1276SetChannel( LMIC.freq );
+        NRF_LOG_PRINTF("RADIO: Listening on %d Hz\n", LMIC.freq);
         if( getSf( LMIC.rps ) == FSK )
         { // FSK modem
             //Radio.SetRxConfig( MODEM_FSK, 50e3, 50e3, 0, 83.333e3, 5, 0, false, 0, true, 0, 0, false, false );

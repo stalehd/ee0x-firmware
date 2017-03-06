@@ -13,11 +13,10 @@
 #include "lmic.h"
 #include "app_error.h"
 
-// Comment out this to get debugging duty cycle. The default duty cycle works wonders
-// when saving battery but can get annoying when you are testing changes. If you ever
-// change the duty cycle *please* set it to the proper values before you go into
-// production. You won't regret it.
-#define LORA_OH_BEHAVE
+// Uncomment this to get the proper duty cycle. Right now everything runs on 10%
+// duty cycle. Nice when debugging, not as nice when there's more than one device
+// on the air
+//#define LORA_OH_BEHAVE
 
 #if !defined(MINRX_SYMS)
 #define MINRX_SYMS 5
@@ -161,13 +160,23 @@ static void aes_appendMic (xref2cu1_t key, u4_t devaddr, u4_t seqno, int dndir, 
 
 static void aes_appendMic0 (xref2u1_t pdu, int len) {
     os_getDevKey(AESkey);
-    os_wmsbf4(pdu+len, os_aes(AES_MIC|AES_MICNOAUX, pdu, len));  // MSB because of internal structure of AES
+/*    NRF_LOG_PRINTF("PDU: (len=%d) ", len);
+    for (int i = 0; i < len; i++) {
+        NRF_LOG_PRINTF("0x%02X ", pdu[i]);
+    }
+    NRF_LOG_PRINTF("\n");*/
+    u4_t mic = os_aes(AES_MIC|AES_MICNOAUX, pdu, len);
+//    NRF_LOG_PRINTF("Append JoinRequest MIC: (LSB) 0x%08x\n", mic);
+    os_wmsbf4(pdu+len, mic);  // MSB because of internal structure of AES
 }
 
 
 static int aes_verifyMic0 (xref2u1_t pdu, int len) {
     os_getDevKey(AESkey);
-    return os_aes(AES_MIC|AES_MICNOAUX, pdu, len) == os_rmsbf4(pdu+len);
+    u4_t calcmic = os_aes(AES_MIC|AES_MICNOAUX, pdu, len);
+    NRF_LOG_PRINTF("Calculated MIC: %08X\n", calcmic);
+    NRF_LOG_PRINTF("Got MIC: %08X\n", os_rmsbf4(pdu+len));
+    return calcmic == os_rmsbf4(pdu+len);
 }
 
 
@@ -536,12 +545,12 @@ void LMIC_setPingable (u1_t intvExp) {
 //
 // BEG: EU868 related stuff
 //
-enum { NUM_DEFAULT_CHANNELS=6 };
-static const u4_t iniChannelFreq[12] = {
+enum { NUM_DEFAULT_CHANNELS=3 };
+static const u4_t iniChannelFreq[9] = {
     // Join frequencies and duty cycle limit (0.1%)
-    EU868_F1|BAND_MILLI, EU868_J4|BAND_MILLI,
-    EU868_F2|BAND_MILLI, EU868_J5|BAND_MILLI,
-    EU868_F3|BAND_MILLI, EU868_J6|BAND_MILLI,
+    EU868_F1|BAND_MILLI,
+    EU868_F2|BAND_MILLI,
+    EU868_F3|BAND_MILLI,
     // Default operational frequencies
     EU868_F1|BAND_CENTI, EU868_F2|BAND_CENTI, EU868_F3|BAND_CENTI,
     EU868_F4|BAND_MILLI, EU868_F5|BAND_MILLI, EU868_F6|BAND_DECI
@@ -553,7 +562,7 @@ static void initDefaultChannels (bit_t join) {
     os_clearMem(&LMIC.bands, sizeof(LMIC.bands));
 
     LMIC.channelMap = 0x3;
-    u1_t su = join ? 0 : 6;
+    u1_t su = join ? 0 : 3;
     for( u1_t fu=0; fu<6; fu++,su++ ) {
         LMIC.channelFreq[fu]  = iniChannelFreq[su];
         LMIC.channelDrMap[fu] = DR_RANGE_MAP(DR_SF12,DR_SF7);
@@ -1083,6 +1092,7 @@ static int decodeBeacon (void) {
 
 
 static bit_t decodeFrame (void) {
+    NRF_LOG("Decode frame\n");
     xref2u1_t d = LMIC.frame;
     u1_t hdr    = d[0];
     u1_t ftype  = hdr & HDR_FTYPE;
@@ -1091,6 +1101,7 @@ static bit_t decodeFrame (void) {
         (hdr & HDR_MAJOR) != HDR_MAJOR_V1 ||
         (ftype != HDR_FTYPE_DADN  &&  ftype != HDR_FTYPE_DCDN) ) {
         // Basic sanity checks failed
+        NRF_LOG("Unexpected frame\n");
         EV(specCond, WARN, (e_.reason = EV::specCond_t::UNEXPECTED_FRAME,
                             e_.eui    = MAIN::CDEV->getEui(),
                             e_.info   = dlen < 4 ? 0 : os_rlsbf4(&d[dlen-4]),
@@ -1114,12 +1125,14 @@ static bit_t decodeFrame (void) {
                             e_.eui    = MAIN::CDEV->getEui(),
                             e_.info   = addr,
                             e_.info2  = LMIC.devaddr));
+        NRF_LOG("DevAddr doesn't match\n");
         goto norx;
     }
     if( poff > pend ) {
         EV(specCond, ERR, (e_.reason = EV::specCond_t::CORRUPTED_FRAME,
                            e_.eui    = MAIN::CDEV->getEui(),
                            e_.info   = 0x1000000 + (poff-pend) + (fct<<8) + (dlen<<16)));
+        NRF_LOG("Corrupted frame\n");
         goto norx;
     }
 
@@ -1137,14 +1150,17 @@ static bit_t decodeFrame (void) {
                            e_.info1  = Base::lsbf4(&d[pend]),
                            e_.info2  = seqno,
                            e_.info3  = LMIC.devaddr));
+        NRF_LOG("Invalid MIC\n");
         goto norx;
     }
     if( seqno < LMIC.seqnoDn ) {
+        NRF_LOG_PRINTF("Sequence no = %d < (current) %d\n", seqno, LMIC.seqnoDn);
         if( (s4_t)seqno > (s4_t)LMIC.seqnoDn ) {
             EV(specCond, INFO, (e_.reason = EV::specCond_t::DNSEQNO_ROLL_OVER,
                                 e_.eui    = MAIN::CDEV->getEui(),
                                 e_.info   = LMIC.seqnoDn,
                                 e_.info2  = seqno));
+            NRF_LOG_PRINTF("Seqno f-up: %d > %d\n", seqno, LMIC.seqnoDn);
             goto norx;
         }
         if( seqno != LMIC.seqnoDn-1 || !LMIC.dnConf || ftype != HDR_FTYPE_DCDN ) {
@@ -1152,6 +1168,7 @@ static bit_t decodeFrame (void) {
                                 e_.eui    = MAIN::CDEV->getEui(),
                                 e_.info   = LMIC.seqnoDn,
                                 e_.info2  = seqno));
+            NRF_LOG_PRINTF("Seqno f-up: %d != %d\n", seqno, LMIC.seqnoDn);
             goto norx;
         }
         // Replay of previous sequence number allowed only if
@@ -1160,6 +1177,7 @@ static bit_t decodeFrame (void) {
     }
     else {
         if( seqno > LMIC.seqnoDn ) {
+            NRF_LOG_PRINTF("Skip seqno is: %d got: %d\n", LMIC.seqnoDn, seqno)
             EV(specCond, INFO, (e_.reason = EV::specCond_t::DNSEQNO_SKIP,
                                 e_.eui    = MAIN::CDEV->getEui(),
                                 e_.info   = LMIC.seqnoDn,
@@ -1390,6 +1408,7 @@ static void schedRx2 (ostime_t delay, osjobcb_t func) {
 }
 
 static void setupRx1 (osjobcb_t func) {
+    NRF_LOG("Setup RX1\n");
     LMIC.txrxFlags = TXRX_DNW1;
     // Turn LMIC.rps from TX over to RX
     LMIC.rps = setNocrc(LMIC.rps,1);
@@ -1436,10 +1455,12 @@ static void onJoinFailed (xref2osjob_t osjob) {
 
 
 static bit_t processJoinAccept (void) {
+    NRF_LOG("Process JoinAccept\n");
     LMIC_ASSERT(LMIC.txrxFlags != TXRX_DNW1 || LMIC.dataLen != 0);
     LMIC_ASSERT((LMIC.opmode & OP_TXRXPEND)!=0);
 
     if( LMIC.dataLen == 0 ) {
+        NRF_LOG("Data len == 0\n");
       nojoinframe:
         /* keep retrying -- if( (LMIC.opmode & OP_JOINING) == 0 ) {
             LMIC_ASSERT((LMIC.opmode & OP_REJOIN) != 0);
@@ -1474,15 +1495,22 @@ static bit_t processJoinAccept (void) {
                            e_.eui    = MAIN::CDEV->getEui(),
                            e_.info   = dlen < 4 ? 0 : mic,
                            e_.info2  = hdr + (dlen<<8)));
+    NRF_LOG("Bad frame\n");
       badframe:
         if( (LMIC.txrxFlags & TXRX_DNW1) != 0 )
             return 0;
         goto nojoinframe;
     }
     aes_encrypt(LMIC.frame+1, dlen-1);
+    NRF_LOG("Unencrypted frame: ");
+    for (int i = 0; i < dlen; i++) {
+        NRF_LOG_PRINTF("%02X ", LMIC.frame[i]);
+    }
+    NRF_LOG("\n");
     if( !aes_verifyMic0(LMIC.frame, dlen-4) ) {
         EV(specCond, ERR, (e_.reason = EV::specCond_t::JOIN_BAD_MIC,
                            e_.info   = mic));
+        NRF_LOG("Not the MIC you are looking for\n");
         goto badframe;
     }
 
@@ -1529,6 +1557,7 @@ static bit_t processJoinAccept (void) {
     LMIC.opmode &= ~(OP_JOINING|OP_TRACK|OP_REJOIN|OP_TXRXPEND|OP_PINGINI) | OP_NEXTCHNL;
     stateJustJoined();
     reportEvent(EV_JOINED);
+    NRF_LOG("I joinededed\n");
     return 1;
 }
 
@@ -1865,7 +1894,7 @@ static void processPingRx (xref2osjob_t osjob) {
 
 static bit_t processDnData (void) {
     LMIC_ASSERT((LMIC.opmode & OP_TXRXPEND)!=0);
-
+    NRF_LOG("Process DnData\n");
     if( LMIC.dataLen == 0 ) {
       norx:
         if( LMIC.txCnt != 0 ) {
@@ -1892,6 +1921,7 @@ static bit_t processDnData (void) {
             LMIC.opmode &= ~OP_LINKDEAD;
             reportEvent(EV_LINK_ALIVE);
         }
+        NRF_LOG("TX_COMPLETE\n");
         reportEvent(EV_TXCOMPLETE);
         // If we haven't heard from NWK in a while although we asked for a sign
         // assume link is dead - notify application and keep going
