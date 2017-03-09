@@ -159,10 +159,8 @@ void OnRxError( void )
 static u1_t randbuf[16];
 
 #ifdef EE02
-#define EE02_EXT_ANT 1
-//#define EE02_CHIP_ANT 1
-const Gpio_t ext_ant_pin = SX1276_ANT_HF_CTRL;
-const Gpio_t int_ant_pin = SX1276_ANT_LF_CTRL;
+const Gpio_t hf_ant_pin = SX1276_ANT_HF_CTRL;
+const Gpio_t lf_ant_pin = SX1276_ANT_LF_CTRL;
 #endif
 
 // get random seed from wideband noise rssi
@@ -173,13 +171,13 @@ void radio_init( void )
     // Set antenna
     #ifdef EE02_EXT_ANT
     NRF_LOG("**** Using external antenna\n");
-    GpioWrite(&ext_ant_pin, 1);
-    GpioWrite(&int_ant_pin, 1);
+    GpioWrite(&hf_ant_pin, 1);
+    GpioWrite(&lf_ant_pin, 1);
     #endif
     #ifdef EE02_CHIP_ANT
     NRF_LOG("**** Using chip antenna\n");
-    GpioWrite(&ext_ant_pin, 0);
-    GpioWrite(&int_ant_pin, 0);
+    GpioWrite(&hf_ant_pin, 0);
+    GpioWrite(&lf_ant_pin, 0);
     #endif
 
     // Initialize Radio driver

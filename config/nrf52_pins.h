@@ -3,6 +3,8 @@
 
 //#define NRF52_DK
 #define EE02
+#define EE02_EXT_ANT 1
+//#define EE02_CHIP_ANT 1
 
 // Channel 1: GPS main power
 // Channel 2: GPS VBackup (always on)
