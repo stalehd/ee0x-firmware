@@ -3,8 +3,8 @@
 
 //#define NRF52_DK
 #define EE02
-#define EE02_EXT_ANT 1
-//#define EE02_CHIP_ANT 1
+//#define EE02_EXT_ANT 1
+#define EE02_CHIP_ANT 1
 
 // Channel 1: GPS main power
 // Channel 2: GPS VBackup (always on)
@@ -66,9 +66,6 @@
     // sx1276 pins
     #define SX1276_RXTX_PIN 30
     #define SX1276_RST_PIN 3
-    #define SX1276_SCK_PIN 25
-    #define SX1276_MISO_PIN 24
-    #define SX1276_MOSI_PIN 23
     #define SX1276_NSS_PIN 22
     #define SX1276_DIO0_PIN 13
     #define SX1276_DIO1_PIN 14
@@ -77,6 +74,7 @@
     #define SX1276_DIO4_A_PIN 19
     #define SX1276_DIO4_B_PIN 29
 
+    
     // RX/TX pins for the GPS UART
     #define GPS_RX_PIN 17
     #define GPS_TX_PIN 18

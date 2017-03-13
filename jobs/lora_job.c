@@ -166,10 +166,10 @@ static void initfunc (osjob_t* job) {
     LMIC_setAdrMode( LORAWAN_ADR_ON );
 
     NRF_LOG("LoRa drtxpow\n");
-    LMIC_setDrTxpow(DR_SF7, 99);
-    LMIC_setDrTxpow(DR_SF8, 99);
-    LMIC_setDrTxpow(DR_SF10, 99);
-    LMIC_setDrTxpow(DR_SF12, 99);
+    LMIC_setDrTxpow(DR_SF7, 20);
+    LMIC_setDrTxpow(DR_SF8, 20);
+    LMIC_setDrTxpow(DR_SF10, 20);
+    LMIC_setDrTxpow(DR_SF12, 20);
     LMIC_setLinkCheckMode(false);
     NRF_LOG_PRINTF("LoRa: Initializing LMiC with device address 0x%08x\n", LORAWAN_DEVICE_ADDRESS);
 

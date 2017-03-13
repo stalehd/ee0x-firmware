@@ -168,17 +168,6 @@ void radio_init( void )
 {
     hal_disableIRQs( );
 
-    // Set antenna
-    #ifdef EE02_EXT_ANT
-    NRF_LOG("**** Using external antenna\n");
-    GpioWrite(&hf_ant_pin, 1);
-    GpioWrite(&lf_ant_pin, 1);
-    #endif
-    #ifdef EE02_CHIP_ANT
-    NRF_LOG("**** Using chip antenna\n");
-    GpioWrite(&hf_ant_pin, 0);
-    GpioWrite(&lf_ant_pin, 0);
-    #endif
 
     // Initialize Radio driver
     RadioEvents.TxDone = OnTxDone;
@@ -252,7 +241,18 @@ void os_radio( u1_t mode )
     case RADIO_TX:
         // transmit frame now
         //LMIC_ASSERT( Radio.GetState( ) == IDLE );
-
+    
+        // Set antenna
+        #ifdef EE02
+        #ifdef EE02_EXT_ANT
+        NRF_LOG("**** Using external antenna\n");
+        GpioWrite(&hf_ant_pin, 1);
+        #endif
+        #ifdef EE02_CHIP_ANT
+        NRF_LOG("**** Using chip antenna\n");
+        GpioWrite(&hf_ant_pin, 0);
+        #endif
+        #endif 
         NRF_LOG_PRINTF("RADIO: Sending on %d Hz\n", LMIC.freq);
         SX1276SetChannel( LMIC.freq );
         if( getSf( LMIC.rps ) == FSK )
