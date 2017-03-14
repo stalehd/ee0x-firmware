@@ -122,7 +122,7 @@ static void dump_received_frame() {
         NRF_LOG_PRINTF("%02x ", LMIC.frame[LMIC.dataBeg + i]);
     }
     NRF_LOG_PRINTF("\n");
-    NRF_LOG("========================= ");
+    NRF_LOG("========================= \n");
 }
 
 
@@ -134,6 +134,7 @@ void onEvent (ev_t ev) {
         case EV_BEACON_TRACKED: NRF_LOG("Got event BEACON_TRACKED\n"); break;
         case EV_JOINING:        NRF_LOG("Got event JOINING\n"); break;
         case EV_JOINED:         NRF_LOG("Got event JOINED\n");
+            NRF_LOG_PRINTF("DevAddr = %08x\n", LMIC.devaddr);
             os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(SEND_RATE), sendfunc);
         break;
         case EV_RFU1:           NRF_LOG("Got event RFU1\n"); break;

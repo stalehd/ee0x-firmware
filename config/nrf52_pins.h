@@ -3,8 +3,8 @@
 
 //#define NRF52_DK
 #define EE02
-//#define EE02_EXT_ANT 1
-#define EE02_CHIP_ANT 1
+#define EE02_EXT_ANT 1
+//#define EE02_CHIP_ANT 1
 
 // Channel 1: GPS main power
 // Channel 2: GPS VBackup (always on)
@@ -39,7 +39,6 @@
     #define SX1276_DIO4_B_PIN 20
 
     #define SX1276_ANT_HF_CTRL 27
-    #define SX1276_ANT_LF_CTRL 30
 
     #define GPS_RX_PIN 29
     #define GPS_TX_PIN 28
