@@ -1,6 +1,7 @@
 #include <stdbool.h>
 
 #include <nrf_drv_twi.h>
+#include <nrf_delay.h>
 
 #include "app_error.h"
 
@@ -21,38 +22,71 @@
 */
 
 #include "oslmic.h"
+#include "sx-radio.h"
 
-#include "nrf52_pins.h"
-#include "gps_job.h"
-#include "battery_job.h"
-#include "imu_job.h"
-#include "lora_job.h"
-#include "power_job.h"
+#define LORA_BANDWIDTH                              0         // [0: 125 kHz,
+                                                              //  1: 250 kHz,
+                                                              //  2: 500 kHz,
+                                                              //  3: Reserved]
+#define LORA_SPREADING_FACTOR                       9         // [SF7..SF12]
+#define LORA_CODINGRATE                             1         // [1: 4/5,
+                                                              //  2: 4/6,
+                                                              //  3: 4/7,
+                                                              //  4: 4/8]
+#define LORA_PREAMBLE_LENGTH                        8         // Same for Tx and Rx
+#define LORA_SYMBOL_TIMEOUT                         5         // Symbols
+#define LORA_FIX_LENGTH_PAYLOAD_ON                  false
+#define LORA_FHSS_ENABLED                           false  
+#define LORA_NB_SYMB_HOP                            4         // Symbols    
+#define LORA_IQ_INVERSION_ON                        false
+#define LORA_CRC_ENABLED                            true
 
+#if 0
+// This is the LF test code. Won't need this for a while
+    debug("\r\n     TEST_LF_OUTPUT on SX1276MB1xAS: 14 dBm at 434 MHz \r\n" );
+    Radio.SetChannel( 433000000 );
+    TxOuputPower = 14;
+    Radio.Write( 0x01, 0x88 );
+    Radio.Write( 0x3D, 0xA1 );
+    Radio.Write( 0x36, 0x01 );
+    Radio.Write( 0x1e, 0x08 );
+#endif
 /**
  * @brief Function for application main entry.
  */
 int main(void)
 {
     NRF_LOG_INIT();
-    NRF_LOG_PRINTF("Start main loop. Device ID = %04x%04x\n", NRF_FICR->DEVICEID[0], NRF_FICR->DEVICEID[1]);
+    NRF_LOG_PRINTF("**** Continious TX test device (ID = %04x%04x)\n", NRF_FICR->DEVICEID[0], NRF_FICR->DEVICEID[1]);
 
-    // Turn on various units through power-switch
-    powerup_init();
+    os_radio_init();
 
-    /* really lmic_init */
-    os_init();
+    uint32_t frequency = 868000000;
+    uint8_t txPower = 14;
 
-    lora_job_init();
+    NRF_LOG_PRINTF("HF output on radio: %d dBm at %d Hz\n", txPower, frequency);
+    Radio.SetChannel( frequency );
 
-    gps_job_init();
+    Radio.Write( 0x01, 0x88 );
+    Radio.Write( 0x3D, 0xA1 );
+    Radio.Write( 0x36, 0x01 );
+    Radio.Write( 0x1e, 0x08 );
 
-    battery_job_init();
+    Radio.SetTxConfig( MODEM_LORA, txPower, 0, LORA_BANDWIDTH,
+                        LORA_SPREADING_FACTOR, LORA_CODINGRATE,
+                        LORA_PREAMBLE_LENGTH, LORA_FIX_LENGTH_PAYLOAD_ON,
+                        LORA_CRC_ENABLED, LORA_FHSS_ENABLED, LORA_NB_SYMB_HOP, 
+                        LORA_IQ_INVERSION_ON, 3000000 );
+    
+    // Sets the radio in Tx mode
+    Radio.Send( NULL, 0 );
+ 
+    NRF_LOG( "Radio sending...\n" );
 
-    imu_job_init();
-
-    os_runloop();
-
-    NRF_LOG("You are not supposed to see this! os_runloop() shouldn't return!\n");
+    while( 1 )
+    {
+        NRF_LOG(".");
+        nrf_delay_ms( 10000 );
+    }
 }
 

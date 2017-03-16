@@ -17,6 +17,12 @@ static struct {
     osjob_t* runnablejobs;
 } OS;
 
+void os_radio_init() {
+    memset(&OS, 0x00, sizeof(OS));
+    hal_init();
+    radio_init();
+}
+
 void os_init () {
     memset(&OS, 0x00, sizeof(OS));
     hal_init();

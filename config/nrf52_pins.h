@@ -17,8 +17,8 @@
 #ifndef NRF52_PINS_H
 #define NRF52_PINS_H
 
-#define NRF52_DK
-//#define EE02
+//#define NRF52_DK
+#define EE02
 
 #ifdef EE02
     // Set this flag to 1 to enable external antenna
