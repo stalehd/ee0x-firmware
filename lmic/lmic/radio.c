@@ -160,7 +160,6 @@ static u1_t randbuf[16];
 
 #ifdef EE02
 const Gpio_t hf_ant_pin = SX1276_ANT_HF_CTRL;
-const Gpio_t lf_ant_pin = SX1276_ANT_LF_CTRL;
 #endif
 
 // get random seed from wideband noise rssi
