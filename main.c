@@ -64,6 +64,9 @@ int main(void)
     uint32_t frequency = 868000000;
     uint8_t txPower = 14;
 
+    // Set pin in tx mode
+    hal_pin_rxtx(1);
+
     NRF_LOG_PRINTF("HF output on radio: %d dBm at %d Hz\n", txPower, frequency);
     Radio.SetChannel( frequency );
 

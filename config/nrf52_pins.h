@@ -22,7 +22,7 @@
 
 #ifdef EE02
     // Set this flag to 1 to enable external antenna
-    #define EE02_EXT_ANT 0
+    #define EE02_EXT_ANT 1
 
     // sx1276 pins
     #define SX1276_DIO0_PIN 13
@@ -33,7 +33,7 @@
     #define SX1276_DIO4_B_PIN 20
     #define SX1276_NSS_PIN 22
     #define SX1276_RST_PIN 3
-    #define SX1276_RXTX_PIN 2
+    #define SX1276_RXTX_PIN 21
 
     // External/chip antenna switch pin
     #define SX1276_ANT_HF_CTRL 31
