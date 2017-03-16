@@ -57,7 +57,7 @@
 int main(void)
 {
     NRF_LOG_INIT();
-    NRF_LOG_PRINTF("**** Continious TX test device (ID = %04x%04x)\n", NRF_FICR->DEVICEID[0], NRF_FICR->DEVICEID[1]);
+    NRF_LOG_PRINTF("**** Continuous TX test device (ID = %04x%04x)\n", NRF_FICR->DEVICEID[0], NRF_FICR->DEVICEID[1]);
 
     os_radio_init();
 
